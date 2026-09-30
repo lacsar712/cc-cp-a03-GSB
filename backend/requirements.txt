@@ -1,0 +1,6 @@
+aiohttp==3.11.11
+asyncpg==0.30.0
+psycopg[binary]==3.2.4
+PyJWT==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1

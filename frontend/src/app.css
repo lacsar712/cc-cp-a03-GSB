@@ -1,0 +1,136 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.sub {
+  color: #64748b;
+  margin-bottom: 1.25rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+  margin-bottom: 1rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  min-width: 140px;
+}
+
+button {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #0369a1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button.secondary {
+  background: #64748b;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.err {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.ok {
+  color: #15803d;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.tag.pass {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tag.fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tag.wait {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.user {
+  font-size: 0.875rem;
+  color: #475569;
+}
