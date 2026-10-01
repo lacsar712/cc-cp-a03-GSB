@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
+import { VoltagePage } from "./VoltagePage.jsx";
 
 const TOKEN_KEY = "coldchain_token";
 const USER_KEY = "coldchain_user";
@@ -6,7 +7,7 @@ const USER_KEY = "coldchain_user";
 function verdictClass(v, status) {
   if (v === "合格") return "tag pass";
   if (v === "超温") return "tag fail";
-  if (status === "pending" || status === "processing") return "tag wait";
+  if (status === "rejected") return "tag reject";
   return "tag wait";
 }
 
@@ -14,7 +15,12 @@ function displayVerdict(row) {
   if (row.verdict) return row.verdict;
   if (row.status === "pending") return "待处理";
   if (row.status === "processing") return "处理中";
+  if (row.status === "rejected") return "拒收";
   return "—";
+}
+
+function viewFromHash() {
+  return window.location.hash === "#/voltage" ? "voltage" : "readings";
 }
 
 export function App() {
@@ -26,12 +32,19 @@ export function App() {
       return null;
     }
   });
+  const [view, setView] = useState(viewFromHash);
   const [loginForm, setLoginForm] = useState({ username: "logger", password: "log123456" });
   const [submitForm, setSubmitForm] = useState({ probe_id: "", temp_c: "" });
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const onHash = () => setView(viewFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   const authHeaders = useCallback(() => {
     const h = { "Content-Type": "application/json" };
@@ -50,11 +63,11 @@ export function App() {
   }, [token, authHeaders]);
 
   useEffect(() => {
+    if (!token || view !== "readings") return undefined;
     loadReadings();
-    if (!token) return undefined;
     const t = setInterval(loadReadings, 3000);
     return () => clearInterval(t);
-  }, [loadReadings, token]);
+  }, [loadReadings, token, view]);
 
   async function onLogin(e) {
     e.preventDefault();
@@ -91,6 +104,10 @@ export function App() {
     setRows([]);
   }
 
+  function nav(target) {
+    window.location.hash = target === "voltage" ? "#/voltage" : "#/";
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
@@ -107,7 +124,9 @@ export function App() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // 电压低于门槛或撞车抢交被整笔拒收：列出服务端返回的原因
         setError(data.detail || "提交失败");
+        await loadReadings();
         return;
       }
       setMsg(data.message || "已提交");
@@ -166,7 +185,9 @@ export function App() {
       <div class="topbar">
         <div>
           <h1>冷链探头超温台</h1>
-          <p class="sub">温度不超过 8℃ 为合格，否则为超温。</p>
+          <p class="sub">
+            温度不超过 8℃ 为合格；探头电压低于最低门槛禁止再交新温，回升后才许再交。
+          </p>
         </div>
         <div class="user">
           {user?.username}（{isWriter ? "记录员" : "值班员"}）
@@ -176,82 +197,105 @@ export function App() {
         </div>
       </div>
 
-      {isWriter && (
-        <div class="card">
-          <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>提交读数</h2>
-          <form onSubmit={onSubmit}>
-            <div class="row">
-              <label>
-                探头编号
-                <input
-                  required
-                  value={submitForm.probe_id}
-                  onInput={(e) =>
-                    setSubmitForm({ ...submitForm, probe_id: e.target.value })
-                  }
-                  placeholder="例如 探头C03"
-                />
-              </label>
-              <label>
-                温度（℃）
-                <input
-                  required
-                  type="number"
-                  step="0.1"
-                  value={submitForm.temp_c}
-                  onInput={(e) =>
-                    setSubmitForm({ ...submitForm, temp_c: e.target.value })
-                  }
-                />
-              </label>
-              <button type="submit" disabled={loading}>
-                提交
-              </button>
+      <nav class="nav">
+        <button
+          type="button"
+          class={view === "readings" ? "navbtn active" : "navbtn"}
+          onClick={() => nav("readings")}
+        >
+          报温台
+        </button>
+        <button
+          type="button"
+          class={view === "voltage" ? "navbtn active" : "navbtn"}
+          onClick={() => nav("voltage")}
+        >
+          电压监视
+        </button>
+      </nav>
+
+      {view === "voltage" ? (
+        <VoltagePage token={token} isWriter={isWriter} authHeaders={authHeaders} />
+      ) : (
+        <div>
+          {isWriter && (
+            <div class="card">
+              <h2 class="cardtitle">提交读数</h2>
+              <form onSubmit={onSubmit}>
+                <div class="row">
+                  <label>
+                    探头编号
+                    <input
+                      required
+                      value={submitForm.probe_id}
+                      onInput={(e) =>
+                        setSubmitForm({ ...submitForm, probe_id: e.target.value })
+                      }
+                      placeholder="例如 探头C03"
+                    />
+                  </label>
+                  <label>
+                    温度（℃）
+                    <input
+                      required
+                      type="number"
+                      step="0.1"
+                      value={submitForm.temp_c}
+                      onInput={(e) =>
+                        setSubmitForm({ ...submitForm, temp_c: e.target.value })
+                      }
+                    />
+                  </label>
+                  <button type="submit" disabled={loading}>
+                    提交
+                  </button>
+                </div>
+                {error && <p class="err">{error}</p>}
+                {msg && <p class="ok">{msg}</p>}
+              </form>
             </div>
-            {error && <p class="err">{error}</p>}
-            {msg && <p class="ok">{msg}</p>}
-          </form>
+          )}
+
+          <div class="card">
+            <h2 class="cardtitle">读数列表</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>编号</th>
+                  <th>探头</th>
+                  <th>温度℃</th>
+                  <th>结论</th>
+                  <th>说明</th>
+                  <th>状态</th>
+                  <th>提交人</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.id}</td>
+                    <td>{r.probe_id}</td>
+                    <td>{r.temp_c}</td>
+                    <td>
+                      <span class={verdictClass(r.verdict, r.status)}>
+                        {displayVerdict(r)}
+                      </span>
+                    </td>
+                    <td>{r.reason || "—"}</td>
+                    <td>{r.status}</td>
+                    <td>{r.created_by}</td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colspan="7">暂无数据</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-
-      <div class="card">
-        <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>读数列表</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>编号</th>
-              <th>探头</th>
-              <th>温度℃</th>
-              <th>结论</th>
-              <th>说明</th>
-              <th>状态</th>
-              <th>提交人</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>{r.id}</td>
-                <td>{r.probe_id}</td>
-                <td>{r.temp_c}</td>
-                <td>
-                  <span class={verdictClass(r.verdict, r.status)}>
-                    {displayVerdict(r)}
-                  </span>
-                </td>
-                <td>{r.reason || "—"}</td>
-                <td>{r.status}</td>
-                <td>{r.created_by}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colspan="7">暂无数据</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
